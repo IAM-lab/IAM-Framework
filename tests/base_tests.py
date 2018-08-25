@@ -140,6 +140,15 @@ class SupersetTestCase(unittest.TestCase):
         session.expunge_all()
         return slc
 
+    def get_pipeline(self, pipeline_name, session):
+        slc = (
+            session.query(models.InferencePipeline)
+            .filter_by(pipeline_name=pipeline_name)
+            .one()
+        )
+        session.expunge_all()
+        return slc
+
     def get_table_by_name(self, name):
         return db.session.query(SqlaTable).filter_by(table_name=name).one()
 

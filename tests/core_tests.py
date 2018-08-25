@@ -68,6 +68,17 @@ class CoreTests(SupersetTestCase):
             data=dict(username='admin', password='wrongPassword'))
         self.assertIn('User confirmation needed', resp)
 
+    def test_inference_pipeline_endpoint(self):
+        self.login(username='admin')
+        infp = self.get_pipeline('STA', db.session)
+        resp = self.get_resp('/superset/inference_pipeline/{}/'.format(infp.id))
+        assert 'Time Column' in resp
+        assert 'List Roles' in resp
+
+        resp = self.get_resp(
+            '/superset/inference_pipeline/{}/?standalone=true'.format(infp.id))
+        assert 'List Roles' not in resp
+
     def test_slice_endpoint(self):
         self.login(username='admin')
         slc = self.get_slice('Girls', db.session)
@@ -155,6 +166,62 @@ class CoreTests(SupersetTestCase):
         assert_admin_view_menus_in('Alpha', self.assertNotIn)
         assert_admin_view_menus_in('Gamma', self.assertNotIn)
 
+    def test_save_pipeline(self):
+        self.login(username='admin')
+        infp_name = 'STA'
+        infp_id = self.get_pipeline(infp_name, db.session).id
+        db.session.commit()
+        copy_name = 'Test STA Save'
+        tbl_id = self.table_ids.get('eyetracking_data')
+        new_pipeline_name = 'Test STA Overwrite'
+
+        url = (
+            '/superset/explore/table/{}/?pipeline_name={}&'
+            'action={}&datasource_name=eyetracking_data')
+
+        form_data = {
+            'viz_type': 'heatmap',
+            'groupby': 'target',
+            'metric': 'sum__value',
+            'row_limit': 5000,
+            'infp_id': infp_id,
+            'inference_modules': []
+        }
+        # Changing name and save as a new slice
+        self.get_resp(
+            url.format(
+                tbl_id,
+                copy_name,
+                'saveas',
+            ),
+            {'form_data': json.dumps(form_data)},
+        )
+        pipelines = db.session.query(models.InferencePipeline) \
+            .filter_by(slice_name=copy_name).all()
+        assert len(pipelines) == 1
+        new_pipeline_id = pipelines[0].id
+
+        form_data = {
+            'viz_type': 'heatmap',
+            'groupby': 'target',
+            'metric': 'sum__value',
+            'row_limit': 5000,
+            'infp_id': new_pipeline_id,
+            'inference_modules': []
+        }
+        # Setting the name back to its original name by overwriting new slice
+        self.get_resp(
+            url.format(
+                tbl_id,
+                new_pipeline_name,
+                'overwrite',
+            ),
+            {'form_data': json.dumps(form_data)},
+        )
+        slc = db.session.query(models.InferencePipeline).filter_by(id=new_pipeline_id).first()
+        assert slc.pipeline_name == new_pipeline_name
+        db.session.delete(slc)
+
     def test_save_slice(self):
         self.login(username='admin')
         slice_name = 'Energy Sankey'
@@ -228,6 +295,13 @@ class CoreTests(SupersetTestCase):
         assert len(resp) > 0
         assert 'Carbon Dioxide' in resp
 
+    def test_pipeline_data(self):
+        self.login(username='admin')
+        slc = self.get_pipeline('STA', db.session)
+        slc_data_attributes = slc.data.keys()
+        assert ('changed_on' in slc_data_attributes)
+        assert ('modified' in slc_data_attributes)
+
     def test_slice_data(self):
         # slice data should have some required attributes
         self.login(username='admin')
@@ -235,6 +309,20 @@ class CoreTests(SupersetTestCase):
         slc_data_attributes = slc.data.keys()
         assert('changed_on' in slc_data_attributes)
         assert('modified' in slc_data_attributes)
+
+    def test_pipelines(self):
+        # Testing by hitting the two supported end points for all slices
+        self.login(username='admin')
+        Inf = models.InferencePipeline
+        urls = []
+        for inf in db.session.query(Inf).all():
+            urls += [
+                (inf.pipeline_name, 'explore', inf.pipeline_url),
+                (inf.pipeline_name, 'explore_json', inf.explore_json_url),
+            ]
+        for name, method, url in urls:
+            logging.info('[{name}]/[{method}]: {url}'.format(**locals()))
+            self.client.get(url)
 
     def test_slices(self):
         # Testing by hitting the two supported end points for all slices
@@ -260,6 +348,20 @@ class CoreTests(SupersetTestCase):
         table = db.session.query(SqlaTable).first()
         assert table.name in resp
         assert '/superset/explore/table/{}'.format(table.id) in resp
+
+    def test_add_pipeline(self):
+        self.login(username='admin')
+        # assert that /chart/add responds with 200
+        url = '/pipeline/add'
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_get_user_pipelines(self):
+        self.login(username='admin')
+        userid = security_manager.find_user('admin').id
+        url = '/pipelineaddview/api/read?_flt_0_created_by={}'.format(userid)
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
 
     def test_add_slice(self):
         self.login(username='admin')
