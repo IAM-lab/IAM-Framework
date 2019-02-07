@@ -8,6 +8,7 @@ app = Flask(__name__)
            + '<resolutionOfScreenX>/<resolutionOfScreenY>/<sizeOfScreen>', methods=['POST'])
 def sta_request(eyeTrackingURL, degreeOfAccuracy, distanceBetweenEyeTrackerAndParticipants,
                resolutionOfScreenX, resolutionOfScreenY, sizeOfScreen):
+    print (request.get_data())
     print(eyeTrackingURL, degreeOfAccuracy, distanceBetweenEyeTrackerAndParticipants)
     return Response()
 
