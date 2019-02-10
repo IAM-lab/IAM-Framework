@@ -42,7 +42,7 @@ def getNumberDurationOfAoIs(Sequences):
         counter = 0
         duration = 0
         flagCounter = 0
-        keys = Sequences.keys()
+        keys = list(Sequences.keys())
         for y in range(0, len(keys)):
             if [s[0:2] for s in Sequences[keys[y]]].count(AoIs[x]) > 0:
                 counter = counter + [s[0:2] for s in Sequences[keys[y]]].count(AoIs[x])
@@ -81,7 +81,7 @@ def removeInsignificantAoIs(Sequences, AoIList):
         if AoI[3]:
             significantAoIs.append(AoI[0])
 
-    keys = Sequences.keys()
+    keys = list(Sequences.keys())
     for y in range(0, len(keys)):
         temp = []
         for k in range(0, len(Sequences[keys[y]])):
@@ -101,7 +101,7 @@ def getExistingAoIList(Sequences):
     :return: List containing areas of interest found previously
     """
     AoIlist = []
-    keys = Sequences.keys()
+    keys = list(Sequences.keys())
     for y in range(0, len(keys)):
         for x in range(0, len(Sequences[keys[y]])):
             try:
