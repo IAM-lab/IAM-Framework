@@ -8,7 +8,6 @@ from Fixation import fixation
 app = Flask(__name__)
 
 
-
 @app.route('/<pList>/<eyeTrackingURL>/<degreeOfAccuracy>/<distanceBetweenEyeTrackerAndParticipants>/'
            + '<resolutionOfScreenX>/<resolutionOfScreenY>/<sizeOfScreen>', methods=['POST'])
 def sta_request(pList, eyeTrackingURL, degreeOfAccuracy, distanceBetweenEyeTrackerAndParticipants,
@@ -18,30 +17,41 @@ def sta_request(pList, eyeTrackingURL, degreeOfAccuracy, distanceBetweenEyeTrack
     #  function which cleans it up and allows the other modules to use it
     datafiles = request.get_data().decode("utf-8").split("\n")
 
-    segmentation_file = stringprocessing.getSegmentationFile(datafiles[1])
+    segmentation_file = stringprocessing.base64Decode(datafiles[1])
 
-    participant_files = stringprocessing.getParticipantFiles(datafiles[0])
+    # Returns a list of dictionaries:
+    """
+    {
+        id: integer,
+        eye_tracking_data: string
+    }
+    """
+    pList = pList.split(",")
+    participant_files = stringprocessing.getParticipantFiles(pList, datafiles[0])
 
+    sta_result = sta(participant_files, eyeTrackingURL, segmentation_file,
+                     float(degreeOfAccuracy), float(distanceBetweenEyeTrackerAndParticipants), int(resolutionOfScreenX),
+                     int(resolutionOfScreenY), int(sizeOfScreen))
+    print(sta_result)
 
-
-    print(pList, eyeTrackingURL, degreeOfAccuracy, distanceBetweenEyeTrackerAndParticipants, resolutionOfScreenX,
-          resolutionOfScreenY, sizeOfScreen)
     return Response()
 
 
-def sta(pList, EyeTrackingFiles, EyeTrackingURL, SegmentationPath,
+def sta(EyeTrackingList, EyeTrackingURL, SegmentationPath,
         degreeOfAccuracy, distanceBetweenEyeTrackerAndParticipants,
         resolutionOfScreenX, resolutionOfScreenY, sizeOfScreen):
     # STA Algorithm
 
     # Preliminary Stage
-    myParticipants = utils.getParticipants(pList, EyeTrackingFiles, EyeTrackingURL)
+    myParticipants = utils.getParticipants(EyeTrackingList, EyeTrackingURL)
+    # Segmentation file is now a single string
     myAoIs = aoi.getAoIs(SegmentationPath)
     myErrorRateArea = utils.calculateErrorRateArea(degreeOfAccuracy, distanceBetweenEyeTrackerAndParticipants,
-                                             resolutionOfScreenX, resolutionOfScreenY, sizeOfScreen)
+                                                   resolutionOfScreenX, resolutionOfScreenY, sizeOfScreen)
     mySequences = sequences.createSequences(myParticipants, myAoIs, myErrorRateArea)
 
-    keys = mySequences.keys()
+    # Python 3 change
+    keys = list(mySequences.keys())
     for y in range(0, len(keys)):
         mySequences[keys[y]] = mySequences[keys[y]].split('.')
         del mySequences[keys[y]][len(mySequences[keys[y]]) - 1]
@@ -51,7 +61,7 @@ def sta(pList, EyeTrackingFiles, EyeTrackingURL, SegmentationPath,
 
     # First-Pass
     mySequences_num = {}
-    keys = mySequences.keys()
+    keys = list(mySequences.keys())
     for y in range(0, len(keys)):
         if (len(mySequences[keys[y]]) != 0):
             mySequences_num[keys[y]] = sequences.getNumberedSequence(mySequences[keys[y]])
@@ -66,7 +76,7 @@ def sta(pList, EyeTrackingFiles, EyeTrackingURL, SegmentationPath,
     myNewAoIList = aoi.getExistingAoIList(myNewSequences)
     myNewAoIList = fixation.calculateTotalNumberDurationofFixationsandNSV(
         myNewAoIList, fixation.calculateNumberDurationOfFixationsAndNSV(
-        myNewSequences))
+            myNewSequences))
     myFinalList = aoi.getValueableAoIs(myNewAoIList)
     myFinalList.sort(key=lambda x: (x[4], x[3], x[2]))
     myFinalList.reverse()
