@@ -2,11 +2,11 @@ from math import tan, radians, sqrt
 from AOI import aoi
 
 # TODO Fix function to use string list
-def getParticipants(pList, Path, pageName):
+def getParticipants(EyeTrackingList, pageName):
     Participants = {}
-    for x in pList:
-        fo = open (Path + "P" + str(x) + ".txt", "r")
-        myFile = fo.read()
+    for participant in EyeTrackingList:
+        myFile = participant["eye_tracking_data"]
+        id = participant["id"]
         myRecords = myFile.split('\n')
         myRecords_templist = []
 
@@ -16,10 +16,11 @@ def getParticipants(pList, Path, pageName):
                     myRecords_templist.append(myRecords[y].split('\t'))
             except:
                 continue
-        if x > 9:
-            Participants["P" + str(x)] = myRecords_templist
+        if int(id) > 9:
+            Participants["P" + id] = myRecords_templist
         else:
-            Participants["P0" + str(x)] = myRecords_templist
+            Participants["P0" + id] = myRecords_templist
+
     return Participants
 
 
@@ -61,7 +62,7 @@ def calculateImportanceThreshold (mySequences):
 
     # TODO This doesn't look good, should throw exception and exit gracefully
     if len(commonAoIs) == 0:
-        print ("No shared instances!")
+        print("No shared instances!")
         exit(1)
 
     minValueCounter = commonAoIs[0][1]
