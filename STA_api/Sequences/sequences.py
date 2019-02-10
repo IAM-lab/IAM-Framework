@@ -10,7 +10,9 @@ def createSequences(Participants, myAoIs, errorRateArea):
     :return Sequences:
     """
     Sequences = {}
-    keys = Participants.keys()
+    # Changed from Participant.keys() (Python 2.7 returned a list by default) to list(Participants.keys())
+    keys = list(Participants.keys())
+
     for y in range(0, len(keys)):
         sequence = ""
         for z in range(0, len(Participants[keys[y]])):
