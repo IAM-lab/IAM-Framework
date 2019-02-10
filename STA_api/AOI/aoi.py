@@ -1,15 +1,14 @@
-def getAoIs(Path):
+def getAoIs(SegmentationString):
     """
 
     :param Path:
     :return:
     """
     AoIs = []
-    fo = open(Path + ".txt", "r")
-    myFile = fo.read()
-    mySegments = myFile.split('\n')
+    mySegments = SegmentationString.decode().split('\n')
 
-    for x in range(0, len(mySegments)):
+    # New empty line gets split too, hence we ignore it
+    for x in range(0, len(mySegments)-1):
         temp = mySegments[x].split(' ')
         AoIs.append([temp[0], temp[1], temp[2], temp[3], temp[4], temp[5]])
 
